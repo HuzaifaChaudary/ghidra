@@ -468,7 +468,8 @@ define context contextreg
   evexBType=(47,47)     # Used for Disp8*N (see table 2-34 in 325462-sdm-vol-1-2abcd-3abcd-4.pdf)
   evexTType=(44,47)     # Used for Disp8*N (see table 2-35 in 325462-sdm-vol-1-2abcd-3abcd-4.pdf)
   evexDisp8=(44,46)
-  reservedHigh=(48,63)  # reserved for future use
+  addrsizeover=(48,48)  # an address size override prefix has been seen
+  reservedHigh=(49,63)  # reserved for future use
 
 ;
 
@@ -2317,8 +2318,10 @@ macro fucompe(val1, val2) {
 :^instruction is instrPhase=0 & over=0x26; instruction     [ segover=4; ]  {} # ES override
 :^instruction is instrPhase=0 & over=0x64; instruction     [ segover=5; ]  {} # FS override
 :^instruction is instrPhase=0 & over=0x65; instruction     [ segover=6; ]  {} # GS override
-:^instruction is instrPhase=0 & over=0x66; instruction     [ opsize=opsize $xor 1; mandover = mandover $xor 1; ] {} # Operand size override
-:^instruction is instrPhase=0 & over=0x67; instruction     [ addrsize=addrsize $xor 1; ] {} # Address size override
+:^instruction is instrPhase=0 & over=0x66 & prefix_66=0; instruction     [ opsize=opsize $xor 1; prefix_66=1; ] {} # Operand size override
+:^instruction is instrPhase=0 & over=0x66 & prefix_66=1; instruction     [ ] {} # A repeated 0x66 has no further effect
+:^instruction is instrPhase=0 & over=0x67 & addrsizeover=0; instruction     [ addrsize=addrsize $xor 1; addrsizeover=1; ] {} # Address size override
+:^instruction is instrPhase=0 & over=0x67 & addrsizeover=1; instruction     [ ] {} # A repeated 0x67 has no further effect
 :^instruction is instrPhase=0 & over=0xf2; instruction     [ repneprefx=1; repprefx=0; ] {}
 :^instruction is instrPhase=0 & over=0xf3; instruction     [ repneprefx=0; repprefx=1; ] {}
 :^instruction is instrPhase=0 & over=0xf0; instruction     [ lockprefx=1; ] {}
@@ -2339,7 +2342,7 @@ macro fucompe(val1, val2) {
 
 # TODO I don't think the following line can really happen because the 66 67 prefix must come before REX prefix
 :^instruction is $(LONGMODE_ON) & instrPhase=0 & over=0x66 & opsize=2; instruction   [ opsize=0; mandover=mandover $xor 1; ] {} # Operand size override
-:^instruction is $(LONGMODE_ON) & instrPhase=0 & over=0x67 & addrsize=2; instruction [ addrsize=1; ] {} # Address size override
+:^instruction is $(LONGMODE_ON) & instrPhase=0 & over=0x67 & addrsize=2 & addrsizeover=0; instruction [ addrsize=1; addrsizeover=1; ] {} # Address size override
 
 :^instruction is $(LONGMODE_ON) & instrPhase=0 &            row=0x4 & rexw=0 & rexr & rexx & rexb;  instruction [ instrPhase=1; rexprefix=1; opsize=1; rexWprefix=0; rexRprefix=rexr; rexXprefix=rexx; rexBprefix=rexb; ] {}
 :^instruction is $(LONGMODE_ON) & instrPhase=0 &            row=0x4 & rexw=1 & rexr & rexx & rexb;  instruction [ instrPhase=1; rexprefix=1; opsize=2; rexWprefix=1; rexRprefix=rexr; rexXprefix=rexx; rexBprefix=rexb; ] {}
